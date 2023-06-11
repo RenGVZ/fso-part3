@@ -91,4 +91,4 @@ app.delete("/api/persons/:id", (req, res) => {
 
 app.use(unknownEndpoint)
 
-app.listen(3001, () => console.log("Server running on port 3001"))
+app.listen(3002, () => console.log("Server running on port 3001"))
