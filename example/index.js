@@ -1,8 +1,23 @@
 const express = require("express")
-const cors = require("cors")
 const app = express()
-app.use(express.json())
+const cors = require("cors")
+
+const requestLogger = (request, response, next) => {
+  console.log("Method:", request.method)
+  console.log("Path:  ", request.path)
+  console.log("Body:  ", request.body)
+  console.log("---")
+  next()
+}
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: "unknown endpoint" })
+}
+
 app.use(cors())
+app.use(express.json())
+app.use(requestLogger)
+app.use(express.static("build"))
 
 let notes = [
   {
@@ -32,7 +47,7 @@ app.get("/", (req, res) => {
 })
 
 app.get("/api/notes", (req, res) => {
-  res.status(200).send(notes)
+  res.json(notes)
 })
 
 app.get("/api/notes/:id", (req, res) => {
@@ -54,8 +69,9 @@ app.delete("/api/notes/:id", (req, res) => {
 app.post("/api/notes", (req, res) => {
   const id = generateId()
   const content = req.body.content
-  if(!content) return res.status(400).json({ error: "content missing" })
-  if(notes.find(note => note.content === content)) return res.status(400).json({ error: "content must be unique" })
+  if (!content) return res.status(400).json({ error: "content missing" })
+  if (notes.find((note) => note.content === content))
+    return res.status(400).json({ error: "content must be unique" })
   const newNote = {
     id,
     content,
@@ -65,6 +81,8 @@ app.post("/api/notes", (req, res) => {
   res.status(201).json(newNote)
 })
 
-const PORT = process.env.PORT || 3001
+app.use(unknownEndpoint)
+
+const PORT = process.env.PORT || 3000
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
