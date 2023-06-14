@@ -1,6 +1,7 @@
 const express = require("express")
 const app = express()
 const morgan = require("morgan")
+const cors = require("cors")
 
 const requestLogger = (req, res, next) => {
   console.log("Method: ", req.method)
@@ -16,9 +17,10 @@ const unknownEndpoint = (req, res) => {
 
 app.use(express.json())
 app.use(requestLogger)
-
-morgan.token('body', (req, res) => JSON.stringify(req.body))
-app.use(morgan(':method :url :status :response-time ms :body'))
+app.use(cors())
+app.use(express.static("build"))
+morgan.token("body", (req, res) => JSON.stringify(req.body))
+app.use(morgan(":method :url :status :response-time ms :body"))
 
 let data = [
   {
@@ -70,7 +72,10 @@ app.post("/api/persons", (req, res) => {
   const name = req.body.name
   const number = req.body.number
   const isNameExists = data.find((d) => d.name === name)
-  if (!name || !number || isNameExists) return res.status(400).send("name or number missing, and name must be unique")
+  if (!name || !number || isNameExists)
+    return res
+      .status(400)
+      .send("name or number missing, and name must be unique")
   const id = generateId()
   const newEntry = {
     id,
@@ -91,4 +96,6 @@ app.delete("/api/persons/:id", (req, res) => {
 
 app.use(unknownEndpoint)
 
-app.listen(3002, () => console.log("Server running on port 3001"))
+const PORT = process.env.PORT || 3001
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
