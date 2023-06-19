@@ -1,35 +1,35 @@
-require("dotenv").config()
-const express = require("express")
+require('dotenv').config()
+const express = require('express')
 const app = express()
-const cors = require("cors")
-const Note = require("./models/note")
+const cors = require('cors')
+const Note = require('./models/note')
 
 const requestLogger = (request, response, next) => {
-  console.log("Method:", request.method)
-  console.log("Path:  ", request.path)
-  console.log("Body:  ", request.body)
-  console.log("---")
+  console.log('Method:', request.method)
+  console.log('Path:  ', request.path)
+  console.log('Body:  ', request.body)
+  console.log('---')
   next()
 }
 
 app.use(cors())
-app.use(express.static("build"))
+app.use(express.static('build'))
 app.use(express.json())
 app.use(requestLogger)
 
-app.get("/api/notes", (req, res) => {
+app.get('/api/notes', (req, res) => {
   Note.find({}).then((note) => {
     res.json(note)
   })
 })
 
-app.get("/api/notes/:id", (req, res, next) => {
+app.get('/api/notes/:id', (req, res, next) => {
   Note.findById(req.params.id)
     .then((note) => {
       if (note) {
         res.json(note)
       } else {
-        res.status(404).send({ error: "no id matches that" })
+        res.status(404).send({ error: 'no id matches that' })
       }
     })
     .catch((error) => {
@@ -37,56 +37,59 @@ app.get("/api/notes/:id", (req, res, next) => {
     })
 })
 
-app.delete("/api/notes/:id", (req, res, next) => {
+app.delete('/api/notes/:id', (req, res, next) => {
   const id = req.params.id
   Note.findByIdAndRemove(id)
     .then((result) => {
       if (result) {
         res.status(204).end()
       } else {
-        res.status(404).send({ error: "no id matches that" })
+        res.status(404).send({ error: 'no id matches that' })
       }
     })
     .catch((error) => next(error))
 })
 
-app.put("/api/notes/:id", (req, res, next) => {
+app.put('/api/notes/:id', (req, res, next) => {
+  const { content, important } = req.body
   const id = req.params.id
-  const body = req.body
-  const updatedNote = {
-    content: body.content,
-    important: body.important,
-  }
 
-  Note.findByIdAndUpdate(id, updatedNote, { new: true })
+  Note.findByIdAndUpdate(
+    id,
+    { content, important },
+    { new: true, runValidators: true, context: 'query' }
+  )
     .then((update) => {
       if (update) {
         res.json(update)
       } else {
-        res.status(404).send({ error: "no id matches that" })
+        res.status(404).send({ error: 'no id matches that' })
       }
     })
     .catch((error) => next(error))
 })
 
-app.post("/api/notes", (req, res) => {
+app.post('/api/notes', (req, res, next) => {
   const body = req.body
 
   if (body.content === undefined)
-    return res.status(400).json({ error: "content missing" })
+    return res.status(400).json({ error: 'content missing' })
 
   const newNote = new Note({
     content: body.content,
     important: body.important || false,
   })
 
-  newNote.save().then((savedNote) => {
-    res.json(savedNote)
-  })
+  newNote
+    .save()
+    .then((savedNote) => {
+      res.json(savedNote)
+    })
+    .catch((error) => next(error))
 })
 
 const unknownEndpoint = (request, response) => {
-  response.status(404).send({ error: "unknown endpoint" })
+  response.status(404).send({ error: 'unknown endpoint' })
 }
 
 app.use(unknownEndpoint)
@@ -94,8 +97,10 @@ app.use(unknownEndpoint)
 const errorHandler = (error, req, res, next) => {
   console.log(error.message)
 
-  if (error.name === "CastError") {
-    return res.status(400).send({ error: "malformatted id" })
+  if (error.name === 'CastError') {
+    return res.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return res.status(400).json({ error: error.message })
   }
 
   next(error)
